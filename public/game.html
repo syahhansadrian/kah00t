@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game - QuizLive</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app" class="container" style="display:flex;flex-direction:column;align-items:center;padding-top:16px;">
+
+    <!-- Top Bar -->
+    <div id="top-bar" style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span id="question-counter" style="font-weight:700;opacity:0.7;font-size:14px;"></span>
+      <span id="my-score" style="font-weight:900;font-size:16px;color:var(--orange);">⭐ 0</span>
+    </div>
+
+    <!-- Timer -->
+    <div id="timer-section">
+      <div class="timer-circle" id="timer-circle">20</div>
+    </div>
+
+    <!-- Question -->
+    <div id="question-section" class="question-card slide-up" style="width:100%;margin-top:16px;">
+      <div class="question-text" id="question-text">Loading...</div>
+      <div class="question-meta" id="question-meta"></div>
+    </div>
+
+    <!-- Options -->
+    <div id="options-section" class="options-grid" style="width:100%;margin-top:16px;">
+      <button class="option-btn opt-0" data-index="0" disabled>
+        <span class="option-shape">▲</span>
+        <span class="option-text">-</span>
+      </button>
+      <button class="option-btn opt-1" data-index="1" disabled>
+        <span class="option-shape">◆</span>
+        <span class="option-text">-</span>
+      </button>
+      <button class="option-btn opt-2" data-index="2" disabled>
+        <span class="option-shape">●</span>
+        <span class="option-text">-</span>
+      </button>
+      <button class="option-btn opt-3" data-index="3" disabled>
+        <span class="option-shape">■</span>
+        <span class="option-text">-</span>
+      </button>
+    </div>
+
+    <!-- Answer Feedback -->
+    <div id="answer-feedback" class="hidden text-center" style="width:100%;margin-top:20px;">
+      <div id="feedback-icon" style="font-size:48px;"></div>
+      <div id="feedback-text" style="font-size:20px;font-weight:800;margin-top:8px;"></div>
+      <div id="feedback-points" style="font-size:16px;font-weight:700;margin-top:4px;"></div>
+    </div>
+
+    <!-- Waiting for host -->
+    <div id="waiting-section" class="hidden" style="width:100%;margin-top:24px;">
+      <div class="waiting-screen" style="min-height:auto;">
+        <div class="spinner"></div>
+        <p style="opacity:0.6;margin-top:8px;">Menunggu soal berikutnya...</p>
+      </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div id="leaderboard-section" class="hidden" style="width:100%;margin-top:16px;">
+      <h3 class="text-center mb-2" style="font-size:20px;">🏆 Leaderboard</h3>
+      <div id="leaderboard-list" class="leaderboard"></div>
+    </div>
+
+    <!-- Final Results -->
+    <div id="final-section" class="hidden" style="width:100%;margin-top:16px;">
+      <div class="text-center mb-2">
+        <div style="font-size:64px;">🏆</div>
+        <h2 style="font-size:32px;font-weight:900;">Game Selesai!</h2>
+      </div>
+      <div id="final-results"></div>
+    </div>
+
+  </div>
+
+  <!-- Confetti container -->
+  <div class="confetti-container" id="confetti-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ============================================================
+    // PLAYER GAME CLIENT
+    // ============================================================
+    const socket = io();
+    const gameId = window.location.pathname.split('/').pop();
+
+    let currentScore = 0;
+    let timerInterval = null;
+    let selectedAnswer = null;
+    let hasAnswered = false;
+
+    const optionShapes = ['▲', '◆', '●', '■'];
+
+    // ---- Connect & join ----
+    socket.on('connect', () => {
+      // Re-join game with stored name
+      const savedName = sessionStorage.getItem('playerName');
+      const savedGameId = sessionStorage.getItem('gameId');
+      if (savedName && savedGameId === gameId) {
+        socket.emit('player:join', { gameId, name: savedName });
+      }
+    });
+
+    socket.on('player:joined', () => {
+      console.log('Joined game as player');
+    });
+
+    // ---- Question ----
+    socket.on('question:new', (data) => {
+      hasAnswered = false;
+      selectedAnswer = null;
+
+      // Show question
+      document.getElementById('question-counter').textContent =
+        `Soal ${data.questionIndex + 1} dari ${data.totalQuestions}`;
+      document.getElementById('question-text').textContent = data.question;
+      document.getElementById('question-meta').textContent =
+        data.category ? `📁 ${data.category}` : '';
+
+      // Show options
+      const buttons = document.querySelectorAll('.option-btn');
+      buttons.forEach((btn, i) => {
+        btn.disabled = false;
+        btn.classList.remove('correct', 'wrong', 'selected');
+        btn.querySelector('.option-text').textContent = data.options[i] || '-';
+      });
+
+      // Hide other sections
+      document.getElementById('answer-feedback').classList.add('hidden');
+      document.getElementById('waiting-section').classList.add('hidden');
+      document.getElementById('leaderboard-section').classList.add('hidden');
+      document.getElementById('final-section').classList.add('hidden');
+      document.getElementById('question-section').classList.remove('hidden');
+      document.getElementById('options-section').classList.remove('hidden');
+
+      // Start timer
+      startTimer(data.timeLimit);
+    });
+
+    // ---- Option click ----
+    document.querySelectorAll('.option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (hasAnswered) return;
+        const index = parseInt(btn.dataset.index);
+        hasAnswered = true;
+        selectedAnswer = index;
+
+        // Visual feedback
+        btn.classList.add('selected');
+        document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+
+        // Send answer
+        socket.emit('player:answer', { gameId, answerIndex: index });
+
+        // Disable timer display
+        clearInterval(timerInterval);
+      });
+    });
+
+    // ---- Answer confirmed ----
+    socket.on('answer:confirmed', ({ isCorrect, correctAnswer, points, totalScore }) => {
+      currentScore = totalScore;
+      document.getElementById('my-score').textContent = `⭐ ${currentScore}`;
+
+      // Show feedback
+      const feedback = document.getElementById('answer-feedback');
+      const icon = document.getElementById('feedback-icon');
+      const text = document.getElementById('feedback-text');
+      const pts = document.getElementById('feedback-points');
+
+      feedback.classList.remove('hidden');
+      icon.textContent = isCorrect ? '✅' : '❌';
+      text.textContent = isCorrect ? 'Benar!' : 'Salah!';
+      text.style.color = isCorrect ? 'var(--green-light)' : 'var(--red-light)';
+      pts.textContent = isCorrect ? `+${points} poin` : '0 poin';
+
+      // Highlight correct/wrong
+      document.querySelectorAll('.option-btn').forEach((b, i) => {
+        b.disabled = true;
+        if (i === correctAnswer) b.classList.add('correct');
+        else if (i === selectedAnswer && !isCorrect) b.classList.add('wrong');
+        else b.classList.add('wrong');
+      });
+
+      // Score popup animation
+      showScorePopup(isCorrect ? `+${points}` : '✗', isCorrect);
+
+      // Hide options, show waiting
+      setTimeout(() => {
+        document.getElementById('question-section').classList.add('hidden');
+        document.getElementById('options-section').classList.add('hidden');
+        document.getElementById('waiting-section').classList.remove('hidden');
+      }, 1500);
+    });
+
+    // ---- Answer reveal ----
+    socket.on('answer:reveal', ({ correctAnswer, leaderboard }) => {
+      showLeaderboard(leaderboard);
+
+      // Show correct answer on buttons
+      document.querySelectorAll('.option-btn').forEach((b, i) => {
+        b.disabled = true;
+        if (i === correctAnswer) b.classList.add('correct');
+        else b.classList.add('wrong');
+      });
+    });
+
+    // ---- Leaderboard ----
+    function showLeaderboard(leaderboard) {
+      const container = document.getElementById('leaderboard-list');
+      container.innerHTML = '';
+
+      leaderboard.forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = `leaderboard-row ${i < 3 ? 'top-' + (i+1) : ''}`;
+        row.style.animationDelay = `${i * 0.05}s`;
+        row.innerHTML = `
+          <span class="leaderboard-rank">${i + 1}</span>
+          <span class="leaderboard-avatar">${p.avatar}</span>
+          <span class="leaderboard-name">${escHtml(p.name)}</span>
+          <span class="leaderboard-score">${p.score.toLocaleString()}</span>
+        `;
+        container.appendChild(row);
+      });
+
+      document.getElementById('question-section').classList.add('hidden');
+      document.getElementById('options-section').classList.add('hidden');
+      document.getElementById('answer-feedback').classList.add('hidden');
+      document.getElementById('waiting-section').classList.add('hidden');
+      document.getElementById('leaderboard-section').classList.remove('hidden');
+    }
+
+    socket.on('show:leaderboard', ({ leaderboard }) => {
+      showLeaderboard(leaderboard);
+    });
+
+    // ---- Game Finished ----
+    socket.on('game:finished', ({ results }) => {
+      document.getElementById('question-section').classList.add('hidden');
+      document.getElementById('options-section').classList.add('hidden');
+      document.getElementById('answer-feedback').classList.add('hidden');
+      document.getElementById('waiting-section').classList.add('hidden');
+      document.getElementById('leaderboard-section').classList.add('hidden');
+      document.getElementById('timer-section').classList.add('hidden');
+
+      const savedName = sessionStorage.getItem('playerName');
+      const container = document.getElementById('final-results');
+      container.innerHTML = '';
+
+      results.slice(0, 20).forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = `result-card ${p.name === savedName ? 'is-me' : ''}`;
+        row.innerHTML = `
+          <span class="result-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1)}</span>
+          <span style="font-size:28px;">${p.avatar}</span>
+          <span class="result-name">${escHtml(p.name)} ${p.name === savedName ? '(Kamu)' : ''}</span>
+          <span class="result-score">${p.score.toLocaleString()}</span>
+        `;
+        container.appendChild(row);
+      });
+
+      document.getElementById('final-section').classList.remove('hidden');
+
+      if (results[0] && results[0].name === savedName) {
+        launchConfetti();
+      }
+    });
+
+    // ---- Host left ----
+    socket.on('game:host-left', () => {
+      document.body.innerHTML = `
+        <div class="container" style="display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;">
+          <div>
+            <div style="font-size:64px;">😢</div>
+            <h2 style="margin:16px 0;">Host meninggalkan game</h2>
+            <p style="opacity:0.6;margin-bottom:24px;">Game telah dihentikan oleh host.</p>
+            <a href="/"><button class="btn btn-white">Kembali ke Beranda</button></a>
+          </div>
+        </div>
+      `;
+    });
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    function startTimer(seconds) {
+      clearInterval(timerInterval);
+      const circle = document.getElementById('timer-circle');
+      let remaining = seconds;
+      circle.textContent = remaining;
+      circle.className = 'timer-circle';
+
+      timerInterval = setInterval(() => {
+        remaining--;
+        circle.textContent = remaining;
+        if (remaining <= 5) circle.className = 'timer-circle danger';
+        else if (remaining <= 10) circle.className = 'timer-circle warning';
+
+        if (remaining <= 0) {
+          clearInterval(timerInterval);
+          circle.textContent = '0';
+        }
+      }, 1000);
+    }
+
+    function showScorePopup(text, isCorrect) {
+      const popup = document.createElement('div');
+      popup.className = `score-change ${isCorrect ? 'correct' : 'wrong'}`;
+      popup.textContent = text;
+      document.body.appendChild(popup);
+      setTimeout(() => popup.remove(), 1200);
+    }
+
+    function launchConfetti() {
+      const container = document.getElementById('confetti-container');
+      const colors = ['#e21b3c','#1368ce','#d89e00','#26890c','#f5a623','#6c3fc5'];
+      for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDuration = (2 + Math.random() * 2) + 's';
+        confetti.style.animationDelay = Math.random() * 1 + 's';
+        confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        confetti.style.width = (6 + Math.random() * 8) + 'px';
+        confetti.style.height = (6 + Math.random() * 8) + 'px';
+        container.appendChild(confetti);
+      }
+      setTimeout(() => container.innerHTML = '', 5000);
+    }
+
+    function escHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Store player name on page load
+    sessionStorage.setItem('playerName', sessionStorage.getItem('playerName') || '');
+    sessionStorage.setItem('gameId', gameId);
+  </script>
+</body>
+</html>

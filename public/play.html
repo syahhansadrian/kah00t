@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Play - QuizLive</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;">
+
+    <a href="/" style="position:absolute;top:20px;left:20px;font-weight:700;opacity:0.7;">← Kembali</a>
+
+    <!-- ========== STEP 1: Enter PIN ========== -->
+    <div id="step-pin" class="text-center" style="width:100%;max-width:400px;">
+      <div style="font-size:48px;margin-bottom:16px;">🎮</div>
+      <h2 style="font-size:28px;font-weight:900;margin-bottom:24px;">Masukkan Game PIN</h2>
+      <div class="input-group">
+        <input type="text" id="pin-input" placeholder="000 000"
+               maxlength="7" inputmode="numeric"
+               style="font-size:36px;text-align:center;font-weight:900;letter-spacing:8px;"
+               autocomplete="off">
+      </div>
+      <button id="btn-join-pin" class="btn btn-primary btn-lg btn-block mt-2" disabled>MASUK</button>
+      <div id="pin-error" class="mt-2" style="color:var(--red);font-weight:700;"></div>
+    </div>
+
+    <!-- ========== STEP 2: Enter Name ========== -->
+    <div id="step-name" class="text-center hidden" style="width:100%;max-width:400px;">
+      <div style="font-size:48px;margin-bottom:16px;">✏️</div>
+      <h2 style="font-size:28px;font-weight:900;margin-bottom:8px;">Masukkan Nama</h2>
+      <p style="opacity:0.7;margin-bottom:24px;" id="quiz-title-display"></p>
+      <div class="input-group">
+        <input type="text" id="name-input" placeholder="Nama kamu..."
+               maxlength="20" autocomplete="off"
+               style="font-size:24px;text-align:center;font-weight:700;">
+      </div>
+      <button id="btn-join-name" class="btn btn-primary btn-lg btn-block mt-2" disabled>JOIN!</button>
+      <div id="name-error" class="mt-2" style="color:var(--red);font-weight:700;"></div>
+    </div>
+
+    <!-- ========== STEP 3: Waiting Room ========== -->
+    <div id="step-waiting" class="hidden" style="width:100%;max-width:600px;">
+      <div class="waiting-screen" style="min-height:auto;">
+        <div class="pop-in text-center">
+          <div style="font-size:48px;">🎉</div>
+          <h2 style="font-size:28px;font-weight:900;margin:16px 0 8px;">Kamu masuk!</h2>
+
+          <!-- Avatar pemain sendiri -->
+          <div class="my-avatar-badge">
+            <span class="avatar-emoji" id="my-avatar-display" style="font-size:40px;">🙂</span>
+            <span class="avatar-name" id="my-avatar-name" style="font-size:16px;font-weight:800;"></span>
+          </div>
+
+          <p style="opacity:0.7;margin:12px 0 8px;">Menunggu host memulai game...</p>
+          <div class="spinner"></div>
+          <p style="opacity:0.5;font-size:14px;margin-top:8px;">Jangan tutup halaman ini</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== STEP 4: Countdown ========== -->
+    <div id="step-countdown" class="hidden" style="text-align:center;">
+      <h2 style="font-size:48px;font-weight:900;">Game Dimulai!</h2>
+      <div class="timer-circle" style="margin-top:24px;font-size:48px;width:120px;height:120px;" id="countdown-display">3</div>
+    </div>
+
+    <!-- ========== STEP 5: GAME (Question + Options) ========== -->
+    <div id="step-game" class="hidden" style="width:100%;max-width:600px;">
+      <!-- Top bar -->
+      <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <span id="question-counter" style="font-weight:700;opacity:0.7;font-size:14px;"></span>
+        <span id="my-score" style="font-weight:900;font-size:16px;color:var(--orange);">⭐ 0</span>
+      </div>
+
+      <!-- Timer -->
+      <div class="text-center">
+        <div class="timer-circle" id="timer-circle">20</div>
+      </div>
+
+      <!-- Question -->
+      <div class="question-card slide-up" style="margin-top:16px;">
+        <div class="question-text" id="question-text">Loading...</div>
+        <div class="question-meta" id="question-meta"></div>
+      </div>
+
+      <!-- Options -->
+      <div class="options-grid" style="margin-top:16px;">
+        <button class="option-btn opt-0" data-index="0" disabled>
+          <span class="option-shape">▲</span><span class="option-text">-</span>
+        </button>
+        <button class="option-btn opt-1" data-index="1" disabled>
+          <span class="option-shape">◆</span><span class="option-text">-</span>
+        </button>
+        <button class="option-btn opt-2" data-index="2" disabled>
+          <span class="option-shape">●</span><span class="option-text">-</span>
+        </button>
+        <button class="option-btn opt-3" data-index="3" disabled>
+          <span class="option-shape">■</span><span class="option-text">-</span>
+        </button>
+      </div>
+
+      <!-- Answer Feedback -->
+      <div id="answer-feedback" class="hidden text-center" style="margin-top:20px;">
+        <div id="feedback-icon" style="font-size:48px;"></div>
+        <div id="feedback-text" style="font-size:20px;font-weight:800;margin-top:8px;"></div>
+        <div id="feedback-points" style="font-size:16px;font-weight:700;margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <!-- ========== STEP 6: Waiting between questions ========== -->
+    <div id="step-next" class="hidden" style="width:100%;max-width:600px;">
+      <div class="waiting-screen" style="min-height:auto;">
+        <div class="spinner"></div>
+        <p style="opacity:0.6;margin-top:8px;">Menunggu soal berikutnya...</p>
+      </div>
+    </div>
+
+    <!-- ========== STEP 7: Leaderboard ========== -->
+    <div id="step-leaderboard" class="hidden" style="width:100%;max-width:600px;">
+      <h3 class="text-center mb-2" style="font-size:20px;">🏆 Leaderboard</h3>
+      <div id="leaderboard-list" class="leaderboard"></div>
+    </div>
+
+    <!-- ========== STEP 8: Final Results (SINEMATIK) ========== -->
+    <div id="step-final" class="hidden" style="width:100%;max-width:600px;">
+      <div class="text-center mb-2">
+        <div style="font-size:64px;">🏆</div>
+        <h2 style="font-size:32px;font-weight:900;">Game Selesai!</h2>
+      </div>
+
+      <!-- PODIUM -->
+      <div class="podium-stage" id="podium-stage">
+        <div class="podium-spots">
+          <div class="podium-spot sp-2"></div>
+          <div class="podium-spot sp-1"></div>
+          <div class="podium-spot sp-3"></div>
+        </div>
+        <div class="podium-row">
+          <div class="podium-col col-2" id="podium-lane-2">
+            <div class="col-crown">🥈</div>
+            <div class="col-avatar" id="p-avatar-2">?</div>
+            <div class="col-name" id="p-name-2">-</div>
+            <div class="col-score" id="p-score-2"></div>
+            <div class="col-base bg-2">2</div>
+          </div>
+          <div class="podium-col col-1" id="podium-lane-1">
+            <div class="col-crown">👑</div>
+            <div class="col-avatar" id="p-avatar-1">?</div>
+            <div class="col-name" id="p-name-1">-</div>
+            <div class="col-score" id="p-score-1"></div>
+            <div class="col-base bg-1">1</div>
+          </div>
+          <div class="podium-col col-3" id="podium-lane-3">
+            <div class="col-crown">🥉</div>
+            <div class="col-avatar" id="p-avatar-3">?</div>
+            <div class="col-name" id="p-name-3">-</div>
+            <div class="col-score" id="p-score-3"></div>
+            <div class="col-base bg-3">3</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="podium-rest" id="podium-rest">
+        <div class="rest-title">📋 Peserta Lainnya</div>
+        <div id="final-results"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="confetti-container" id="confetti-container"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ============================================================
+    // PLAYER CLIENT - Single Page Flow (no redirect)
+    // ============================================================
+    const socket = io();
+    let gameId = null;
+    let playerName = null;
+    let playerAvatar = '🙂';
+    let currentScore = 0;
+    let timerInterval = null;
+    let selectedAnswer = null;
+    let hasAnswered = false;
+
+    // Helper: show one step, hide all others
+    function showStep(id) {
+      ['step-pin','step-name','step-waiting','step-countdown',
+       'step-game','step-next','step-leaderboard','step-final'
+      ].forEach(s => {
+        document.getElementById(s).classList.add('hidden');
+      });
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    // ============================================================
+    // STEP 1: PIN
+    // ============================================================
+    const pinInput = document.getElementById('pin-input');
+    const btnJoinPin = document.getElementById('btn-join-pin');
+    const pinError = document.getElementById('pin-error');
+
+    pinInput.addEventListener('input', (e) => {
+      let val = e.target.value.replace(/\D/g, '');
+      if (val.length > 3) val = val.slice(0,3) + ' ' + val.slice(3);
+      e.target.value = val;
+      btnJoinPin.disabled = val.replace(/\s/g,'').length !== 6;
+      pinError.textContent = '';
+    });
+
+    pinInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !btnJoinPin.disabled) btnJoinPin.click();
+    });
+
+    btnJoinPin.addEventListener('click', async () => {
+      const pin = pinInput.value.replace(/\s/g, '');
+      btnJoinPin.disabled = true;
+      btnJoinPin.textContent = 'MEMERIKSA...';
+
+      try {
+        const res = await fetch('/api/join', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          pinError.textContent = data.error;
+          btnJoinPin.disabled = false;
+          btnJoinPin.textContent = 'MASUK';
+          return;
+        }
+
+        gameId = data.gameId;
+        document.getElementById('quiz-title-display').textContent = data.quizTitle;
+        showStep('step-name');
+        document.getElementById('name-input').focus();
+      } catch (err) {
+        pinError.textContent = 'Gagal menghubungi server';
+        btnJoinPin.disabled = false;
+        btnJoinPin.textContent = 'MASUK';
+      }
+    });
+
+    // ============================================================
+    // STEP 2: Name
+    // ============================================================
+    const nameInput = document.getElementById('name-input');
+    const btnJoinName = document.getElementById('btn-join-name');
+    const nameError = document.getElementById('name-error');
+
+    nameInput.addEventListener('input', () => {
+      btnJoinName.disabled = nameInput.value.trim().length < 2;
+      nameError.textContent = '';
+    });
+
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !btnJoinName.disabled) btnJoinName.click();
+    });
+
+    btnJoinName.addEventListener('click', () => {
+      playerName = nameInput.value.trim();
+      if (playerName.length < 2) return;
+
+      btnJoinName.disabled = true;
+      btnJoinName.textContent = 'GABUNG...';
+
+      // Store for reconnection
+      sessionStorage.setItem('playerName', playerName);
+      sessionStorage.setItem('gameId', gameId);
+
+      socket.emit('player:join', { gameId, name: playerName });
+    });
+
+    // ============================================================
+    // SOCKET EVENTS
+    // ============================================================
+    // Event untuk pemain ini sendiri (berisi avatar)
+    socket.on('player:joined-self', ({ name, avatar }) => {
+      playerAvatar = avatar;
+      document.getElementById('my-avatar-display').textContent = avatar;
+      document.getElementById('my-avatar-name').textContent = name;
+      showStep('step-waiting');
+    });
+
+    // Event broadcast ke semua (berisi data pemain baru) — pemain abaikan
+    socket.on('player:joined', () => { /* ignore for players */ });
+
+    socket.on('game:starting', ({ countdown }) => {
+      showStep('step-countdown');
+      let count = countdown;
+      const el = document.getElementById('countdown-display');
+      el.textContent = count;
+      const iv = setInterval(() => {
+        count--;
+        if (el) el.textContent = count;
+        if (count <= 0) {
+          clearInterval(iv);
+          // gameStep will be shown by question:new
+        }
+      }, 1000);
+    });
+
+    socket.on('question:new', (data) => {
+      hasAnswered = false;
+      selectedAnswer = null;
+
+      document.getElementById('question-counter').textContent =
+        `Soal ${data.questionIndex + 1} dari ${data.totalQuestions}`;
+      document.getElementById('question-text').textContent = data.question;
+      document.getElementById('question-meta').textContent =
+        data.category ? `📁 ${data.category}` : '';
+
+      // Reset buttons
+      document.querySelectorAll('.option-btn').forEach((btn, i) => {
+        btn.disabled = false;
+        btn.classList.remove('correct', 'wrong', 'selected');
+        btn.querySelector('.option-text').textContent = data.options[i] || '-';
+      });
+
+      document.getElementById('answer-feedback').classList.add('hidden');
+      showStep('step-game');
+
+      startTimer(data.timeLimit);
+    });
+
+    // Option click
+    document.querySelectorAll('.option-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (hasAnswered) return;
+        const index = parseInt(btn.dataset.index);
+        hasAnswered = true;
+        selectedAnswer = index;
+
+        btn.classList.add('selected');
+        document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+
+        socket.emit('player:answer', { gameId, answerIndex: index });
+        clearInterval(timerInterval);
+      });
+    });
+
+    socket.on('answer:confirmed', ({ isCorrect, correctAnswer, points, totalScore }) => {
+      currentScore = totalScore;
+      document.getElementById('my-score').textContent = `⭐ ${currentScore}`;
+
+      // Feedback
+      const fb = document.getElementById('answer-feedback');
+      fb.classList.remove('hidden');
+      document.getElementById('feedback-icon').textContent = isCorrect ? '✅' : '❌';
+      document.getElementById('feedback-text').textContent = isCorrect ? 'Benar!' : 'Salah!';
+      document.getElementById('feedback-text').style.color = isCorrect ? 'var(--green-light)' : 'var(--red-light)';
+      document.getElementById('feedback-points').textContent = isCorrect ? `+${points} poin` : '0 poin';
+
+      // Highlight
+      document.querySelectorAll('.option-btn').forEach((b, i) => {
+        b.disabled = true;
+        if (i === correctAnswer) b.classList.add('correct');
+        else b.classList.add('wrong');
+      });
+
+      // Score popup
+      showScorePopup(isCorrect ? `+${points}` : '✗', isCorrect);
+
+      // Transition to waiting after delay
+      setTimeout(() => {
+        showStep('step-next');
+      }, 1500);
+    });
+
+    socket.on('answer:reveal', ({ correctAnswer, leaderboard }) => {
+      // Show leaderboard briefly then auto-advance
+      renderLeaderboard(leaderboard);
+      showStep('step-leaderboard');
+    });
+
+    socket.on('show:leaderboard', ({ leaderboard }) => {
+      renderLeaderboard(leaderboard);
+      showStep('step-leaderboard');
+    });
+
+    socket.on('game:finished', ({ results }) => {
+      // Podium sinematik: render rest list & animate
+      renderFinalResults(results);
+      showStep('step-final');
+      document.getElementById('podium-rest').style.opacity = '0';
+      animatePodiumPlayer(results, () => {
+        if (results[0] && results[0].name === playerName) launchConfetti();
+      });
+    });
+
+    socket.on('game:host-left', () => {
+      document.body.innerHTML = `
+        <div class="container" style="display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;">
+          <div>
+            <div style="font-size:64px;">😢</div>
+            <h2 style="margin:16px 0;">Host meninggalkan game</h2>
+            <p style="opacity:0.6;margin-bottom:24px;">Game telah dihentikan oleh host.</p>
+            <a href="/"><button class="btn btn-white">Kembali ke Beranda</button></a>
+          </div>
+        </div>
+      `;
+    });
+
+    socket.on('error', ({ msg }) => {
+      pinError.textContent = msg;
+      nameError.textContent = msg;
+      btnJoinPin.disabled = false;
+      btnJoinPin.textContent = 'MASUK';
+      btnJoinName.disabled = false;
+      btnJoinName.textContent = 'JOIN!';
+    });
+
+    // ============================================================
+    // RECONNECT: if page was reloaded mid-game
+    // ============================================================
+    socket.on('connect', () => {
+      const savedName = sessionStorage.getItem('playerName');
+      const savedGameId = sessionStorage.getItem('gameId');
+      if (savedName && savedGameId) {
+        playerName = savedName;
+        gameId = savedGameId;
+        socket.emit('player:join', { gameId, name: savedName });
+      }
+    });
+
+    // ============================================================
+    // HELPERS
+    // ============================================================
+    function startTimer(seconds) {
+      clearInterval(timerInterval);
+      const circle = document.getElementById('timer-circle');
+      let remaining = seconds;
+      circle.textContent = remaining;
+      circle.className = 'timer-circle';
+
+      timerInterval = setInterval(() => {
+        remaining--;
+        circle.textContent = remaining;
+        if (remaining <= 5) circle.className = 'timer-circle danger';
+        else if (remaining <= 10) circle.className = 'timer-circle warning';
+        if (remaining <= 0) { clearInterval(timerInterval); circle.textContent = '0'; }
+      }, 1000);
+    }
+
+    function renderLeaderboard(leaderboard) {
+      const container = document.getElementById('leaderboard-list');
+      container.innerHTML = '';
+      leaderboard.forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = `leaderboard-row ${i < 3 ? 'top-' + (i+1) : ''}`;
+        row.innerHTML = `
+          <span class="leaderboard-rank">${i + 1}</span>
+          <span class="leaderboard-avatar">${p.avatar}</span>
+          <span class="leaderboard-name">${esc(p.name)}</span>
+          <span class="leaderboard-score">${p.score.toLocaleString()}</span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function renderFinalResults(results) {
+      // 1-3 ditangani podium; render 4+
+      const container = document.getElementById('final-results');
+      container.innerHTML = '';
+      results.slice(3, 20).forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = `result-card ${p.name === playerName ? 'is-me' : ''}`;
+        row.innerHTML = `
+          <span class="result-rank">${i + 4}</span>
+          <span style="font-size:28px;">${p.avatar}</span>
+          <span class="result-name">${esc(p.name)} ${p.name===playerName?'(Kamu)':''}</span>
+          <span class="result-score">${p.score.toLocaleString()}</span>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    // Podium sinematik pemain: reveal 3rd → 2nd → 1st
+    function animatePodiumPlayer(results, onDone) {
+      // reset
+      [1,2,3].forEach(i => {
+        const lane = document.getElementById(`podium-lane-${i}`);
+        if (lane) lane.classList.remove('show');
+      });
+      document.querySelectorAll('.podium-announce').forEach(el => el.remove());
+
+      const top3 = results.slice(0, 3);
+      const laneMap = { 1: top3[0], 2: top3[1], 3: top3[2] };
+      [1,2,3].forEach(i => {
+        const p = laneMap[i];
+        if (!p) { document.getElementById(`podium-lane-${i}`).style.display='none'; return; }
+        document.getElementById(`podium-lane-${i}`).style.display='flex';
+        document.getElementById(`p-avatar-${i}`).textContent = p.avatar;
+        document.getElementById(`p-name-${i}`).textContent = p.name;
+        document.getElementById(`p-score-${i}`).textContent = p.score.toLocaleString();
+      });
+
+      const announce = (txt, delay) => {
+        setTimeout(() => {
+          const a = document.createElement('div');
+          a.className = 'podium-announce';
+          a.textContent = txt;
+          document.body.appendChild(a);
+          requestAnimationFrame(() => a.classList.add('show'));
+          setTimeout(() => a.remove(), 2600);
+        }, delay);
+      };
+
+      const t3 = 500, a3 = t3 + 400;
+      const t2 = a3 + 2000, a2 = t2 + 400;
+      const t1 = a2 + 2000, a1 = t1 + 400;
+
+      setTimeout(() => document.getElementById('podium-lane-3').classList.add('show'), t3);
+      announce('3️⃣', a3);
+
+      setTimeout(() => document.getElementById('podium-lane-2').classList.add('show'), t2);
+      announce('2️⃣', a2);
+
+      setTimeout(() => document.getElementById('podium-lane-1').classList.add('show'), t1);
+      announce('🏆', a1);
+
+      setTimeout(() => {
+        const rest = document.getElementById('podium-rest');
+        rest.style.opacity = '1';
+        rest.classList.add('fade-in');
+      }, t1 + 2200);
+
+      setTimeout(() => { if (onDone) onDone(); }, t1 + 1500);
+    }
+
+    function showScorePopup(text, isCorrect) {
+      const popup = document.createElement('div');
+      popup.className = `score-change ${isCorrect ? 'correct' : 'wrong'}`;
+      popup.textContent = text;
+      document.body.appendChild(popup);
+      setTimeout(() => popup.remove(), 1200);
+    }
+
+    function launchConfetti() {
+      const container = document.getElementById('confetti-container');
+      const colors = ['#e21b3c','#1368ce','#d89e00','#26890c','#f5a623','#6c3fc5'];
+      for (let i = 0; i < 100; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.background = colors[Math.floor(Math.random() * colors.length)];
+        c.style.animationDuration = (2 + Math.random() * 2) + 's';
+        c.style.animationDelay = Math.random() * 1 + 's';
+        c.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        c.style.width = (6 + Math.random() * 8) + 'px';
+        c.style.height = (6 + Math.random() * 8) + 'px';
+        container.appendChild(c);
+      }
+      setTimeout(() => container.innerHTML = '', 5000);
+    }
+
+    function esc(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+  </script>
+</body>
+</html>

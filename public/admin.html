@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buat Kuis - QuizLive</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container" style="padding-top:16px;padding-bottom:40px;">
+
+    <a href="/" style="position:fixed;top:20px;left:20px;font-weight:700;opacity:0.7;z-index:10;">← Kembali</a>
+
+    <!-- STEP 1: Create Quiz -->
+    <div id="step-create">
+      <h1 style="font-size:32px;font-weight:900;" class="text-center mb-2">🛠️ Buat Kuis Baru</h1>
+
+      <div class="card card-white">
+        <div class="input-group input-group-dark">
+          <label>Judul Kuis</label>
+          <input type="text" id="quiz-title" placeholder="Contoh: Pengetahuan Umum" maxlength="60">
+        </div>
+      </div>
+
+      <!-- Questions -->
+      <div id="questions-container"></div>
+
+      <button id="btn-add-question" class="btn btn-secondary btn-block mt-2">
+        ➕ Tambah Soal
+      </button>
+
+      <button id="btn-create-quiz" class="btn btn-primary btn-lg btn-block mt-3" disabled>
+        🚀 Buat & Mulai Game
+      </button>
+    </div>
+
+    <!-- STEP 2: Lobby -->
+    <div id="step-lobby" class="hidden">
+      <div class="text-center">
+        <h1 style="font-size:28px;font-weight:900;">🎮 Game Lobby</h1>
+        <p style="opacity:0.7;margin-top:4px;" id="lobby-quiz-title"></p>
+
+        <div class="pin-display mt-3" id="game-pin">------</div>
+        <p style="opacity:0.6;font-size:14px;margin-top:8px;">Bagikan PIN ini ke pemain!</p>
+
+        <div class="player-badge mt-3">
+          <span class="dot"></span>
+          <span id="player-count">0</span> pemain terhubung
+        </div>
+
+        <!-- AVATARS GRID - staging pemain yang join -->
+        <div id="lobby-avatars" class="avatar-track mt-3"></div>
+
+        <div class="mt-4" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <button id="btn-start-game" class="btn btn-primary btn-lg" disabled>
+            ▶️ MULAI GAME
+          </button>
+          <button id="btn-copy-pin" class="btn btn-white btn-sm">
+            📋 Salin PIN
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Hosting -->
+    <div id="step-hosting" class="hidden">
+      <!-- Top bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span id="host-question-counter" style="font-weight:700;font-size:14px;"></span>
+        <div class="player-badge">
+          <span class="dot"></span>
+          <span id="host-player-count">0</span> pemain
+        </div>
+      </div>
+
+      <!-- Current Question Display -->
+      <div id="host-question-card" class="question-card">
+        <div class="question-text" id="host-question-text">Loading...</div>
+        <div class="question-meta" id="host-question-meta"></div>
+      </div>
+
+      <!-- Timer -->
+      <div class="text-center mt-2">
+        <div class="timer-circle" id="host-timer">-</div>
+      </div>
+
+      <!-- Answer stats -->
+      <div id="host-answer-stats" class="hidden mt-3">
+        <p class="text-center mb-2" style="font-weight:700;font-size:14px;">
+          <span id="answered-count">0</span> / <span id="total-players">0</span> sudah menjawab
+        </p>
+        <div class="answer-stats" id="answer-bars"></div>
+      </div>
+
+      <!-- Host controls -->
+      <div class="mt-3" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button id="btn-reveal" class="btn btn-white" disabled>
+          💡 Tunjukkan Jawaban
+        </button>
+        <button id="btn-next" class="btn btn-primary" disabled>
+          ➡️ Soal Berikutnya
+        </button>
+      </div>
+
+      <!-- Answer breakdown display -->
+      <div id="host-reveal-section" class="hidden mt-3">
+        <div class="card card-white">
+          <h3 class="text-center mb-2" style="font-weight:900;">📊 Hasil Jawaban</h3>
+          <div id="reveal-correct" class="text-center" style="font-size:18px;font-weight:700;"></div>
+          <div id="reveal-explanation" class="text-center mt-1" style="font-size:14px;color:var(--gray-dark);"></div>
+        </div>
+
+        <!-- Leaderboard -->
+        <h3 class="text-center mt-2" style="font-size:18px;font-weight:900;">🏆 Leaderboard</h3>
+        <div id="host-leaderboard" class="leaderboard"></div>
+      </div>
+    </div>
+
+    <!-- STEP 4: Final Results (SINEMATIK) -->
+    <div id="step-final" class="hidden">
+      <div class="text-center">
+        <div style="font-size:64px;">🏆</div>
+        <h1 style="font-size:32px;font-weight:900;">Game Selesai!</h1>
+        <p style="opacity:0.7;" id="final-player-count"></p>
+      </div>
+
+      <!-- PODIUM SINEMATIK -->
+      <div class="podium-stage" id="podium-stage">
+        <div class="podium-spots">
+          <div class="podium-spot sp-2"></div>
+          <div class="podium-spot sp-1"></div>
+          <div class="podium-spot sp-3"></div>
+        </div>
+        <div class="podium-row">
+          <!-- lane 2 (silver) -->
+          <div class="podium-col col-2" id="podium-lane-2">
+            <div class="col-crown">🥈</div>
+            <div class="col-avatar" id="p-avatar-2">?</div>
+            <div class="col-name" id="p-name-2">-</div>
+            <div class="col-score" id="p-score-2"></div>
+            <div class="col-base bg-2">2</div>
+          </div>
+          <!-- lane 1 (gold/center) -->
+          <div class="podium-col col-1" id="podium-lane-1">
+            <div class="col-crown">👑</div>
+            <div class="col-avatar" id="p-avatar-1">?</div>
+            <div class="col-name" id="p-name-1">-</div>
+            <div class="col-score" id="p-score-1"></div>
+            <div class="col-base bg-1">1</div>
+          </div>
+          <!-- lane 3 (bronze) -->
+          <div class="podium-col col-3" id="podium-lane-3">
+            <div class="col-crown">🥉</div>
+            <div class="col-avatar" id="p-avatar-3">?</div>
+            <div class="col-name" id="p-name-3">-</div>
+            <div class="col-score" id="p-score-3"></div>
+            <div class="col-base bg-3">3</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sisa peserta -->
+      <div class="podium-rest" id="podium-rest">
+        <div class="rest-title">📋 Peserta Lainnya</div>
+        <div id="final-results-host"></div>
+      </div>
+
+      <a href="/admin">
+        <button class="btn btn-white btn-lg btn-block mt-3">
+          🔄 Buat Game Baru
+        </button>
+      </a>
+    </div>
+
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ============================================================
+    // ADMIN/HOST CLIENT
+    // ============================================================
+    const socket = io();
+    let gameId = null;
+    let quizId = null;
+    let questions = [];
+    let totalPlayers = 0;
+
+    // ============================================================
+    // STEP 1: QUIZ BUILDER
+    // ============================================================
+    let questionCount = 0;
+
+    function addQuestion(index) {
+      const container = document.getElementById('questions-container');
+      const div = document.createElement('div');
+      div.className = 'card card-white';
+      div.id = `q-${index}`;
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <h3 style="font-weight:900;font-size:16px;color:var(--purple);">Soal ${index + 1}</h3>
+          <button onclick="removeQuestion(${index})" class="btn btn-sm" style="background:var(--red);color:white;padding:4px 12px;font-size:12px;">✕ Hapus</button>
+        </div>
+        <div class="input-group input-group-dark">
+          <label>Pertanyaan</label>
+          <input type="text" class="q-text" placeholder="Tulis pertanyaan..." maxlength="200">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="input-group input-group-dark">
+            <label style="color:var(--red);">Jawaban A</label>
+            <input type="text" class="q-opt" data-i="0" placeholder="Pilihan A">
+          </div>
+          <div class="input-group input-group-dark">
+            <label style="color:var(--blue);">Jawaban B</label>
+            <input type="text" class="q-opt" data-i="1" placeholder="Pilihan B">
+          </div>
+          <div class="input-group input-group-dark">
+            <label style="color:var(--orange);">Jawaban C</label>
+            <input type="text" class="q-opt" data-i="2" placeholder="Pilihan C">
+          </div>
+          <div class="input-group input-group-dark">
+            <label style="color:var(--green);">Jawaban D</label>
+            <input type="text" class="q-opt" data-i="3" placeholder="Pilihan D">
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px;">
+          <div class="input-group input-group-dark" style="flex:1;">
+            <label>Jawaban Benar</label>
+            <select class="q-correct">
+              <option value="0">A</option>
+              <option value="1">B</option>
+              <option value="2">C</option>
+              <option value="3">D</option>
+            </select>
+          </div>
+          <div class="input-group input-group-dark" style="flex:1;">
+            <label>Waktu (detik)</label>
+            <select class="q-time">
+              <option value="10">10 detik</option>
+              <option value="15">15 detik</option>
+              <option value="20" selected>20 detik</option>
+              <option value="30">30 detik</option>
+              <option value="45">45 detik</option>
+              <option value="60">60 detik</option>
+            </select>
+          </div>
+        </div>
+        <div class="input-group input-group-dark" style="margin-top:8px;">
+          <label style="font-size:12px;">Penjelasan (opsional)</label>
+          <input type="text" class="q-explain" placeholder="Penjelasan singkat..." maxlength="200">
+        </div>
+      `;
+      container.appendChild(div);
+    }
+
+    function removeQuestion(index) {
+      const el = document.getElementById(`q-${index}`);
+      if (el) el.remove();
+      updateCreateButton();
+    }
+
+    document.getElementById('btn-add-question').addEventListener('click', () => {
+      questionCount++;
+      addQuestion(questionCount - 1);
+      updateCreateButton();
+    });
+
+    // Add first 3 questions by default
+    [0,1,2].forEach(i => { questionCount++; addQuestion(i); });
+
+    function updateCreateButton() {
+      const cards = document.querySelectorAll('#questions-container .card');
+      const title = document.getElementById('quiz-title').value.trim();
+      document.getElementById('btn-create-quiz').disabled = !(title && cards.length > 0);
+    }
+
+    document.getElementById('quiz-title').addEventListener('input', updateCreateButton);
+
+    // ============================================================
+    // CREATE QUIZ & GAME
+    // ============================================================
+    document.getElementById('btn-create-quiz').addEventListener('click', async () => {
+      const title = document.getElementById('quiz-title').value.trim();
+      const cards = document.querySelectorAll('#questions-container .card');
+
+      questions = [];
+      cards.forEach((card) => {
+        const text = card.querySelector('.q-text').value.trim();
+        const opts = [...card.querySelectorAll('.q-opt')].map(i => i.value.trim());
+        const correct = parseInt(card.querySelector('.q-correct').value);
+        const time = parseInt(card.querySelector('.q-time').value);
+        const explain = card.querySelector('.q-explain').value.trim();
+
+        if (text && opts.every(o => o)) {
+          questions.push({
+            question: text,
+            options: opts,
+            correctIndex: correct,
+            timeLimit: time,
+            explanation: explain || null
+          });
+        }
+      });
+
+      if (questions.length === 0) return alert('Isi minimal 1 soal dengan lengkap!');
+
+      // Create quiz
+      const btn = document.getElementById('btn-create-quiz');
+      btn.disabled = true;
+      btn.textContent = 'MEMBUAT...';
+
+      try {
+        const res = await fetch('/api/quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, questions })
+        });
+        const quizData = await res.json();
+        quizId = quizData.quizId;
+
+        // Create game
+        const gameRes = await fetch('/api/game', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quizId })
+        });
+        const gameData = await gameRes.json();
+        gameId = gameData.gameId;
+
+        // Join as host
+        socket.emit('host:join', { gameId });
+
+        // Show lobby
+        document.getElementById('step-create').classList.add('hidden');
+        document.getElementById('step-lobby').classList.remove('hidden');
+        document.getElementById('game-pin').textContent = gameData.pin;
+        document.getElementById('lobby-quiz-title').textContent = title;
+      } catch (err) {
+        alert('Gagal membuat game: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '🚀 Buat & Mulai Game';
+      }
+    });
+
+    // Copy PIN
+    document.getElementById('btn-copy-pin').addEventListener('click', () => {
+      const pin = document.getElementById('game-pin').textContent;
+      navigator.clipboard.writeText(pin).then(() => {
+        const btn = document.getElementById('btn-copy-pin');
+        btn.textContent = '✅ Tersalin!';
+        setTimeout(() => btn.textContent = '📋 Salin PIN', 2000);
+      });
+    });
+
+    // ============================================================
+    // STEP 2: LOBBY
+    // ============================================================
+    // Kumpulan avatar pemain (fetch semua saat baru join)
+    function renderLobbyAvatars(players) {
+      const container = document.getElementById('lobby-avatars');
+      container.innerHTML = '';
+      players.forEach(p => {
+        container.insertAdjacentHTML('beforeend', `
+          <div class="avatar-chip">
+            <span class="avatar-emoji">${p.avatar}</span>
+            <span class="avatar-name">${escHtml(p.name)}</span>
+          </div>
+        `);
+      });
+    }
+
+    // ketika ada pemain baru join (staging)
+    socket.on('player:joined', (data) => {
+      const count = data.playerCount || (data.players && data.players.length) || totalPlayers;
+      totalPlayers = count;
+      document.getElementById('player-count').textContent = count;
+      document.getElementById('host-player-count').textContent = count;
+      document.getElementById('btn-start-game').disabled = count === 0;
+
+      // Render chip avatar baru (full re-render dari daftar pemain)
+      const players = data.players || [];
+      if (players.length) renderLobbyAvatars(players);
+    });
+
+    // FALLBACK: kalau hanya dapat count (host uda join sebelum player)
+    socket.on('player:count', ({ count }) => {
+      totalPlayers = count;
+      document.getElementById('player-count').textContent = count;
+      document.getElementById('host-player-count').textContent = count;
+      document.getElementById('btn-start-game').disabled = count === 0;
+    });
+
+    document.getElementById('btn-start-game').addEventListener('click', () => {
+      socket.emit('host:start', { gameId });
+    });
+
+    // ============================================================
+    // STEP 3: HOSTING
+    // ============================================================
+    socket.on('game:starting', () => {
+      document.getElementById('step-lobby').classList.add('hidden');
+      document.getElementById('step-hosting').classList.remove('hidden');
+    });
+
+    socket.on('question:new', (data) => {
+      document.getElementById('host-question-counter').textContent =
+        `Soal ${data.questionIndex + 1} / ${data.totalQuestions}`;
+      document.getElementById('host-question-text').textContent = data.question;
+      document.getElementById('host-question-meta').textContent =
+        data.category ? `📁 ${data.category}` : '';
+      document.getElementById('host-timer').textContent = data.timeLimit;
+
+      // Reset UI
+      document.getElementById('host-answer-stats').classList.add('hidden');
+      document.getElementById('host-reveal-section').classList.add('hidden');
+      document.getElementById('btn-reveal').disabled = true;
+      document.getElementById('btn-reveal').textContent = '💡 Tunjukkan Jawaban';
+      document.getElementById('btn-next').disabled = true;
+
+      // Timer
+      let remaining = data.timeLimit;
+      const timerEl = document.getElementById('host-timer');
+      timerEl.className = 'timer-circle';
+      clearInterval(window._hostTimer);
+      window._hostTimer = setInterval(() => {
+        remaining--;
+        timerEl.textContent = remaining;
+        if (remaining <= 5) timerEl.className = 'timer-circle danger';
+        else if (remaining <= 10) timerEl.className = 'timer-circle warning';
+        if (remaining <= 0) {
+          clearInterval(window._hostTimer);
+          timerEl.textContent = '0';
+          // Auto enable reveal
+          document.getElementById('btn-reveal').disabled = false;
+        }
+      }, 1000);
+    });
+
+    socket.on('player:answered', ({ answeredCount, totalPlayers }) => {
+      document.getElementById('host-answer-stats').classList.remove('hidden');
+      document.getElementById('answered-count').textContent = answeredCount;
+      document.getElementById('total-players').textContent = totalPlayers;
+
+      if (answeredCount >= totalPlayers) {
+        document.getElementById('btn-reveal').disabled = false;
+        document.getElementById('btn-reveal').textContent = '💡 Semua sudah jawab! 👆';
+      }
+    });
+
+    // Reveal answer
+    document.getElementById('btn-reveal').addEventListener('click', () => {
+      clearInterval(window._hostTimer);
+      socket.emit('host:reveal', { gameId });
+    });
+
+    socket.on('answer:reveal', ({ correctAnswer, explanation, leaderboard, answerStats }) => {
+      const labels = ['A', 'B', 'C', 'D'];
+      document.getElementById('reveal-correct').innerHTML =
+        `✅ Jawaban: <span style="color:var(--green);font-size:24px;">${labels[correctAnswer]}</span>`;
+      document.getElementById('reveal-explanation').textContent = explanation || '';
+
+      // Answer stats bars
+      const barsContainer = document.getElementById('answer-bars');
+      const maxStat = Math.max(...answerStats, 1);
+      const colors = ['var(--red)', 'var(--blue)', 'var(--orange)', 'var(--green)'];
+      barsContainer.innerHTML = answerStats.map((count, i) => `
+        <div class="stat-bar">
+          <div class="stat-bar-fill" style="height:${Math.max(20, (count/maxStat)*100)}%;background:${colors[i]};">${count}</div>
+          <div class="stat-bar-label">${labels[i]}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('host-reveal-section').classList.remove('hidden');
+      document.getElementById('btn-reveal').disabled = true;
+      document.getElementById('btn-reveal').textContent = '💡 Tunjukkan Jawaban';
+      document.getElementById('btn-next').disabled = false;
+
+      // Show leaderboard
+      const lbContainer = document.getElementById('host-leaderboard');
+      lbContainer.innerHTML = '';
+      leaderboard.slice(0, 10).forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = `leaderboard-row ${i < 3 ? 'top-' + (i+1) : ''}`;
+        row.innerHTML = `
+          <span class="leaderboard-rank">${i + 1}</span>
+          <span class="leaderboard-avatar">${p.avatar}</span>
+          <span class="leaderboard-name">${escHtml(p.name)}</span>
+          <span class="leaderboard-score">${p.score.toLocaleString()}</span>
+        `;
+        lbContainer.appendChild(row);
+      });
+    });
+
+    // Next question
+    document.getElementById('btn-next').addEventListener('click', () => {
+      document.getElementById('host-reveal-section').classList.add('hidden');
+      document.getElementById('btn-reveal').disabled = true;
+      document.getElementById('btn-next').disabled = true;
+      socket.emit('host:next', { gameId });
+    });
+
+    // Show leaderboard button (from host)
+    socket.on('show:leaderboard', ({ leaderboard }) => {
+      // Same as reveal
+    });
+
+    // ============================================================
+    // STEP 4: FINAL RESULTS
+    // ============================================================
+    // ============================================================
+    // PODIUM SINEMATIK (reveal 3rd → 2nd → 1st)
+    // ============================================================
+    function animatePodium(results) {
+      // reset
+      [1,2,3].forEach(i => {
+        const lane = document.getElementById(`podium-lane-${i}`);
+        if (lane) lane.classList.remove('show');
+      });
+
+      const top3 = results.slice(0, 3);
+      // Lane 1 = champion (center), lane 2 = second, lane 3 = third
+      const laneMap = { 1: top3[0], 2: top3[1], 3: top3[2] };
+
+      // set data + sembunyikan lane yang kosong
+      [1,2,3].forEach(i => {
+        const p = laneMap[i];
+        const lane = document.getElementById(`podium-lane-${i}`);
+        if (!p) {
+          if (lane) lane.style.display = 'none';
+          return;
+        }
+        if (lane) lane.style.display = 'flex';
+        document.getElementById(`p-avatar-${i}`).textContent = p.avatar;
+        document.getElementById(`p-name-${i}`).textContent = p.name;
+        document.getElementById(`p-score-${i}`).textContent = p.score.toLocaleString();
+      });
+
+      // Reset announce
+      document.querySelectorAll('.podium-announce').forEach(el => el.remove());
+
+      // Timeline: show 3rd first, 2nd next, 1st last with announcement
+      const announce = (txt, delay) => {
+        setTimeout(() => {
+          const a = document.createElement('div');
+          a.className = 'podium-announce';
+          a.textContent = txt;
+          document.body.appendChild(a);
+          requestAnimationFrame(() => a.classList.add('show'));
+          setTimeout(() => a.remove(), 2600);
+        }, delay);
+      };
+
+      // Timing (ms)
+      const t3 = 600;
+      const tAnnounce3 = t3 + 400;
+      const t2 = tAnnounce3 + 2000;
+      const tAnnounce2 = t2 + 400;
+      const t1 = tAnnounce2 + 2000;
+      const tAnnounce1 = t1 + 400;
+
+      // Reveal 3rd
+      setTimeout(() => document.getElementById('podium-lane-3').classList.add('show'), t3);
+      announce('3️⃣', tAnnounce3);
+
+      // Reveal 2nd
+      setTimeout(() => document.getElementById('podium-lane-2').classList.add('show'), t2);
+      announce('2️⃣', tAnnounce2);
+
+      // Reveal 1st (with extra drama)
+      setTimeout(() => {
+        document.getElementById('podium-lane-1').classList.add('show');
+      }, t1);
+      announce('🏆', tAnnounce1);
+
+      // Show rest after champion revealed
+      setTimeout(() => {
+        const rest = document.getElementById('podium-rest');
+        rest.classList.add('fade-in');
+        rest.style.opacity = '1';
+      }, t1 + 2200);
+
+      // Confetti after champion
+      setTimeout(() => launchConfetti(), t1 + 1500);
+
+      return t1 + 3000;
+    }
+
+    socket.on('game:finished', ({ results }) => {
+      clearInterval(window._hostTimer);
+      document.getElementById('step-hosting').classList.add('hidden');
+      document.getElementById('step-final').classList.remove('hidden');
+      document.getElementById('final-player-count').textContent = `${results.length} pemain`;
+
+      // Render sisa peserta (4+)
+      const container = document.getElementById('final-results-host');
+      container.innerHTML = '';
+      results.slice(3, 20).forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = 'result-card';
+        row.innerHTML = `
+          <span class="result-rank">${i + 4}</span>
+          <span style="font-size:28px;">${p.avatar}</span>
+          <span class="result-name">${escHtml(p.name)}</span>
+          <span style="font-size:13px;opacity:0.6;">${p.correctCount}/${p.totalAnswered} benar (${p.accuracy}%)</span>
+          <span class="result-score">${p.score.toLocaleString()}</span>
+        `;
+        container.appendChild(row);
+      });
+
+      // Sembunyikan rest dulu sampai juara diumumkan
+      document.getElementById('podium-rest').style.opacity = '0';
+
+      animatePodium(results);
+    });
+
+    // ============================================================
+    // UTILS
+    // ============================================================
+    function escHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function launchConfetti() {
+      const colors = ['#e21b3c','#1368ce','#d89e00','#26890c','#f5a623','#6c3fc5'];
+      for (let i = 0; i < 80; i++) {
+        const c = document.createElement('div');
+        c.className = 'confetti';
+        c.style.position = 'fixed';
+        c.style.left = Math.random() * 100 + 'vw';
+        c.style.top = '-20px';
+        c.style.background = colors[Math.floor(Math.random() * colors.length)];
+        c.style.animationDuration = (2 + Math.random() * 2) + 's';
+        c.style.animationDelay = Math.random() * 1 + 's';
+        c.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+        c.style.width = (6 + Math.random() * 8) + 'px';
+        c.style.height = (6 + Math.random() * 8) + 'px';
+        c.style.zIndex = '999';
+        c.style.pointerEvents = 'none';
+        document.body.appendChild(c);
+      }
+      setTimeout(() => {
+        document.querySelectorAll('.confetti').forEach(c => c.remove());
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

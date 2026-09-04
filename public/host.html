@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host Game - QuizLive</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="container" style="padding-top:16px;">
+
+    <div id="host-loading" class="waiting-screen">
+      <div class="spinner"></div>
+      <p style="opacity:0.6;">Memuat game...</p>
+    </div>
+
+    <div id="host-content" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <span id="host-q-counter" style="font-weight:700;opacity:0.7;font-size:14px;"></span>
+        <div class="player-badge">
+          <span class="dot"></span>
+          <span id="host-p-count">0</span> pemain
+        </div>
+      </div>
+
+      <div id="host-q-card" class="question-card">
+        <div class="question-text" id="host-q-text">Loading...</div>
+      </div>
+
+      <div class="text-center mt-2">
+        <div class="timer-circle" id="host-timer-circle">-</div>
+      </div>
+
+      <div id="host-stats" class="hidden mt-2 text-center" style="font-weight:700;">
+        <span id="host-answered">0</span> / <span id="host-total">0</span> menjawab
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+        <button id="host-reveal-btn" class="btn btn-white" disabled>💡 Tunjukkan Jawaban</button>
+        <button id="host-next-btn" class="btn btn-primary" disabled>➡️ Berikutnya</button>
+      </div>
+
+      <div id="host-leaderboard" class="leaderboard mt-3"></div>
+    </div>
+
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const gameId = window.location.pathname.split('/').pop();
+
+    socket.emit('host:join', { gameId });
+
+    socket.on('host:joined', () => {
+      document.getElementById('host-loading').classList.add('hidden');
+      document.getElementById('host-content').classList.remove('hidden');
+    });
+
+    socket.on('error', ({ msg }) => {
+      alert(msg);
+    });
+  </script>
+</body>
+</html>

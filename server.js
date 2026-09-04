@@ -5,6 +5,10 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+
+// Trust proxy — diperlukan saat dideploy di belakang load balancer (Render/Railway)
+app.set('trust proxy', 1);
+
 const io = new Server(server, {
   cors: { origin: '*' },
   pingTimeout: 60000,
@@ -463,7 +467,11 @@ function getRandomAvatar() {
 // ============================================================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`\n🎮 Kahoot Clone running at http://localhost:${PORT}`);
-  console.log(`   Admin:   http://localhost:${PORT}/admin`);
-  console.log(`   Play:    http://localhost:${PORT}/play\n`);
+  const publicUrl = process.env.URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+  console.log(`\n🎮 Kahoot Clone running at ${publicUrl}`);
+  console.log(`   Admin:   ${publicUrl}/admin`);
+  console.log(`   Play:    ${publicUrl}/play`);
+  console.log('\n   ⚠️  WebSocket membutuhkan server berjalan terus-menerus');
+  console.log('      (bukan serverless seperti Vercel)');
+  console.log('\n   ✅ Deploy ke: Render.com / Railway / Fly.io / Oracle Cloud');
 });
